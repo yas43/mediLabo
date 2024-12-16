@@ -1,0 +1,144 @@
+version: '3.8'
+
+services:
+
+  gatewaycontainer:
+    networks:
+      - app_network
+    #    image: patientgateway:latest
+    build:
+      context: ../mediLaboSolutionGateway
+      dockerfile: Dockerfile
+    container_name: gatewaymediLabo
+    depends_on:
+      - analysecontainer
+      - patienthistorycontainer
+      - patientinfocontainer
+      - authcontainer
+    ports:
+      - "8080:8080"
+
+  patientinfocontainer:
+    networks:
+      - app_network
+    #    image: patientinfo:latest
+    build:
+      context: ../mediLaboSolutionPatientInformation
+      dockerfile: Dockerfile
+    container_name: patientinfomediLabo
+    depends_on:
+      - postgrescontainer
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=3539
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgresmediLabo:5432/P9PatientInformation
+    ports:
+      - "8085:8085"
+
+  frontendcontainer:
+    networks:
+      - app_network
+    #    image: patientfrontend:latest
+    build:
+      context: ../medioLaboSolutionFront
+      dockerfile: Dockerfile
+    container_name: frontendmediLabo
+    depends_on:
+      - gatewaycontainer
+    ports:
+      - "8093:8083"
+
+  analysecontainer:
+    networks:
+      - app_network
+    #    image: patienthistoryanalyse:latest
+    build:
+      context: ../mediLaboSolutionPatientHistoryAnalyse
+      dockerfile: Dockerfile
+    container_name: analysemediLabo
+    depends_on:
+      - patienthistorycontainer
+    ports:
+      - "8091:8091"
+
+  authcontainer:
+    networks:
+      - app_network
+    #    image: patienthistoryanalyse:latest
+    build:
+      context: ../medioLaboSolutionAuthorizationServer
+      dockerfile: Dockerfile
+    container_name: authmediLabo
+    depends_on:
+      - postgrescontainerauth
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=3539
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgresmediLaboauth:5432/simpleAuthentication-JWT-base-
+
+    ports:
+      - "8082:8082"
+
+  patienthistorycontainer:
+    networks:
+      - app_network
+    #    image: patienthistory:latest
+    build:
+      context: ../mediLaboSolutionPatientHistory
+      dockerfile: Dockerfile
+    container_name: patienthistorymediLabo
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://admin:3539@mongodbcontainer:27017/?authSource=admin&directConnection=true
+    depends_on:
+      - mongodbcontainer
+    ports:
+      - "8086:8086"
+
+  postgrescontainer:
+    networks:
+      - app_network
+    image: postgres
+    container_name: postgresmediLabo
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=3539
+      - POSTGRES_DB=P9PatientInformation
+    ports:
+      - "5432:5432"
+
+  postgrescontainerauth:
+    networks:
+      - app_network
+    image: postgres
+    container_name: postgresmediLaboauth
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=3539
+      - POSTGRES_DB=simpleAuthentication-JWT-base-
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5433:5432"
+
+
+  mongodbcontainer:
+    networks:
+      - app_network
+    image: mongo:latest
+    #    container_name: mongodbmediLabo
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: 3539
+    volumes:
+      - mongo-data:/data/db
+
+networks:
+  app_network:
+    driver: bridge
+
+volumes:
+  mongo-data:
+  postgres-data:
